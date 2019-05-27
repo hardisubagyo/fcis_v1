@@ -404,31 +404,13 @@
                     <script>
                         var mymap = L.map('mapid', {minZoom: 0,maxZoom: 15}).setView([-4.907389, 115.169578], 4);
 
-                        //var mb = L.tileLayer.mbTiles('./countries-raster.mbtiles').addTo(mymap);
-
                         L.control.scale().addTo(mymap);
-
-                        L.geoJSON(ibukota_provinsi, {
-                            pointToLayer: function(feature,latlng){
-                                label = String(feature.properties.NAMA)
-                                    return new L.CircleMarker(latlng, {
-                                        radius: 1,
-                                    }).bindTooltip(label, {permanent: true, direction: "center",className: "my-labels"}).openTooltip();
-                            }
-                        }).addTo(mymap);
 
                         var myStyle = {
                             "color": "#000",
                             "weight": 1,
                             "opacity": 0.65
                         };
-
-                        /*mb.on('databaseloaded', function(ev) {
-                            console.info('MBTiles DB loaded', ev);
-                        });
-                        mb.on('databaseerror', function(ev) {
-                            console.info('MBTiles DB error', ev);
-                        });*/
 
                         mymap.on('dblclick', function(e){
                             var coord = e.latlng;
@@ -441,6 +423,51 @@
                         });
 
                         var serviceUrl ='http://localhost:8080/geoserver/mx/ows'; 
+                        function getColor(d) {
+                            return d > 4000 ? '#7f2704' :
+                                    d > 3000  ? '#b83c02' :
+                                    d > 2000  ? '#e6590a' :
+                                    d > 1000  ? '#f97f2b' :
+                                    d > 500   ? '#fda45d' :
+                                    d > 100   ? '#fdca97' :
+                                    d > 0     ? '#fee4ca' :
+                                                '#fff5eb';
+                        }
+
+                        var ParamMorofologi = {
+                            service : 'WFS',
+                            version: '1.0.0',
+                            request: 'GetFeature',
+                            typeName : 'mx:Morfology',
+                            outputFormat: 'text/javascript',
+                            format_options : 'callback:getJson',
+                            SrsName : 'EPSG:4326'
+                        };
+                        var Morfologiparameters = L.Util.extend(ParamMorofologi);
+                        var URLMorfo = serviceUrl + L.Util.getParamString(Morfologiparameters);
+                        console.log(URLMorfo);
+                        $.ajax({
+                            type: "GET",
+                            url : URLMorfo,
+                            dataType : 'jsonp',
+                            jsonpCallback : 'getJson',
+                            async: false,
+                            success : function(response){
+                                L.geoJson(response, {
+                                    style: function(features){  
+                                        return{
+                                            weight: 1,
+                                            opacity: 1,
+                                            color: 'white',
+                                            dashArray: '3',
+                                            fillOpacity: 0.7,
+                                            fillColor: getColor(features.properties.ELEVASI)
+                                        };
+                                    }
+                                }).addTo(mymap);
+                            }
+                        });
+
                         var defaultParameters = {
                             service : 'WFS',
                             version: '1.0.0',
@@ -453,7 +480,7 @@
                         var parameters = L.Util.extend(defaultParameters);
                         var URL = serviceUrl + L.Util.getParamString(parameters);
                         console.log(URL);
-                        var ajax = $.ajax({
+                        $.ajax({
                             type: "GET",
                             url : URL,
                             dataType : 'jsonp',
@@ -465,13 +492,22 @@
                                         return{
                                             weight: 2,
                                             opacity: 1,
-                                            color: 'blue',
-                                            fillOpacity: 0
+                                            color: 'black',
+                                            fillOpacity: 0,
                                         };
                                     }
                                 }).addTo(mymap);
                             }
                         });
+
+                        L.geoJSON(ibukota_provinsi, {
+                            pointToLayer: function(feature,latlng){
+                                label = String(feature.properties.NAMA)
+                                    return new L.CircleMarker(latlng, {
+                                        radius: 1,
+                                    }).bindTooltip(label, {permanent: true, direction: "center",className: "my-labels"}).openTooltip();
+                            }
+                        }).addTo(mymap).bringToFront();
 
                         L.polyline([
                             <?php foreach($waypoint as $item){ ?>
@@ -484,6 +520,8 @@
                         ?>
                             L.marker([<?php echo $item->x; ?>, <?php echo $item->y; ?>]).addTo(mymap);
                         <?php } ?>
+
+
                     </script>
 
                     <div class="modal fade" id="modalPrimary" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
